@@ -30,6 +30,7 @@ namespace College_Organizer.Views
     /// </summary>
     public sealed partial class Sign_Up : Page
     {
+        // Reminder: Clean up
         CognitoAWSCredentials credentials = new CognitoAWSCredentials(ApplicationData.Current.LocalSettings.Values["IDENTITYPOOL_ID"].ToString(), RegionEndpoint.USEast1);
         private readonly string _clientId = ApplicationData.Current.LocalSettings.Values["CLIENT_ID"].ToString();
         private readonly string _poolId = ApplicationData.Current.LocalSettings.Values["USERPOOL_ID"].ToString();
