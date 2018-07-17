@@ -19,6 +19,8 @@ using Amazon.CognitoIdentityProvider;
 using Windows.Storage;
 using Windows.UI.Popups;
 using Amazon.Extensions.CognitoAuthentication;
+using Windows.ApplicationModel.Core;
+using Windows.UI.ViewManagement;
 
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
@@ -33,11 +35,14 @@ namespace College_Organizer.Views
         private readonly string _clientId = ApplicationData.Current.LocalSettings.Values["CLIENT_ID"].ToString();
         private readonly string _poolId = ApplicationData.Current.LocalSettings.Values["USERPOOL_ID"].ToString();
         private readonly AmazonCognitoIdentityProviderClient _client;
+        CognitoUser user;
+        private int currentID = ApplicationView.GetForCurrentView().Id;
 
         public Login()
         {
             this.InitializeComponent();
             _client = new AmazonCognitoIdentityProviderClient(new AnonymousAWSCredentials(), RegionEndpoint.USEast1);
+            
         }
 
         private async void btnLogin_Click(object sender, RoutedEventArgs e)
@@ -45,7 +50,7 @@ namespace College_Organizer.Views
             bool loggedIn = await CheckPasswordAsync(txtLogin.Text, pWLogin.Password);
             if (loggedIn)
             {
-                this.Frame.Navigate(typeof(Landing));
+                CreateNewView();                
             }
         }
 
@@ -54,13 +59,13 @@ namespace College_Organizer.Views
             try
             {
                 CognitoUserPool userPool = new CognitoUserPool(_poolId, _clientId, _client);
-                CognitoUser user = new CognitoUser(txtLogin.Text, _clientId, userPool, _client);
+                user = new CognitoUser(txtLogin.Text, _clientId, userPool, _client);
 
                 AuthFlowResponse authFlow = await user.StartWithSrpAuthAsync(new InitiateSrpAuthRequest()
                 {
                     Password = pWLogin.Password
                 }).ConfigureAwait(false);
-
+                
                 return true;
 
             }
@@ -70,6 +75,22 @@ namespace College_Organizer.Views
                 await msgBox.ShowAsync();
                 return false;
             }
+        }
+
+        private async void CreateNewView()
+        {
+            CoreApplicationView landing = CoreApplication.CreateNewView();
+            int newViewId = 0;
+            await landing.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                Frame frame = new Frame();
+                frame.Navigate(typeof(Landing), user);
+                Window.Current.Content = frame;
+                Window.Current.Activate();
+
+                newViewId = ApplicationView.GetForCurrentView().Id;
+            });
+            await ApplicationViewSwitcher.SwitchAsync(newViewId, currentID, ApplicationViewSwitchingOptions.ConsolidateViews);
         }
     }
 }
