@@ -44,5 +44,63 @@ namespace College_Organizer
             CognitoAWSCredentials credentials = userF.GetCognitoAWSCredentials(identityID, RegionEndpoint.USEast1);
 
         }
+
+        private void landingNaviView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+        {
+            
+        }
+
+        private async void AddNewCourse()
+        {
+            CourseName course = new CourseName();
+            var result  = await course.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                RichEditBox richEdit = new RichEditBox();
+                
+                var item = AddNaviItem();
+                landingNaviView.MenuItems.Add(item);
+                landingNaviView.MenuItems.Add(new NavigationViewItemSeparator());
+                landingNaviView.MenuItems.Add(new NavigationViewItemHeader().Content = "Assignments");
+                landingNaviView.MenuItems.Add(new NavigationViewItem().Content = "Add New Assignment");
+                landingNaviView.MenuItems.Add(new NavigationViewItemSeparator());
+                landingNaviView.MenuItems.Add(new NavigationViewItemHeader().Content = "Tests");
+                landingNaviView.MenuItems.Add(new NavigationViewItem().Content = "Add New Test");
+                landingNaviView.MenuItems.Add(new NavigationViewItemSeparator());
+                landingNaviView.MenuItems.Add(new NavigationViewItemHeader().Content = "Projects");
+                landingNaviView.MenuItems.Add(new NavigationViewItem().Content = "Add New Project");
+
+                landingNaviView.SelectedItem = item;
+                landingGrid.Children.Add(richEdit);
+            }
+        }
+
+        private void UpdateCourseInfo()
+        {
+            
+        }
+        // Reminder: Make some changes later to make more generic
+        private NavigationViewItem AddNaviItem()
+        {
+            NavigationViewItem viewItem = new NavigationViewItem();
+            viewItem.Content = ApplicationData.Current.LocalSettings.Values["CourseName"];
+            return viewItem;
+        }
+
+        private void landingNaviView_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+        {
+            NavigationViewItem invokedMenuItem = sender.MenuItems
+                            .OfType<NavigationViewItem>()
+                            .Where(item =>
+                                 item.Content.ToString() ==
+                                 args.InvokedItem.ToString())
+                            .FirstOrDefault();
+            var pageTypeName = invokedMenuItem.Tag.ToString();
+
+            if (pageTypeName == firstItem.Tag.ToString())
+            {
+                AddNewCourse();
+            }
+        }
     }
 }
