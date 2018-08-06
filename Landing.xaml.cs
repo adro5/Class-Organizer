@@ -16,6 +16,8 @@ using Windows.UI.Xaml.Navigation;
 using Amazon;
 using Amazon.CognitoIdentity;
 using Windows.Storage;
+using Newtonsoft.Json;
+using Windows.ApplicationModel;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -27,9 +29,19 @@ namespace College_Organizer
     public sealed partial class Landing : Page
     {
         private readonly string identityID = ApplicationData.Current.LocalSettings.Values["IDENTITYPOOL_ID"].ToString();
+        private event SuspendingEventHandler Suspending;
+        int countEdits = -1, countAssi = -1;
+
         public Landing()
         {
             this.InitializeComponent();
+            this.Suspending += OnSuspending; 
+        }
+
+        private async void OnSuspending(object sender, SuspendingEventArgs e)
+        {
+            
+            
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -38,6 +50,8 @@ namespace College_Organizer
             NaviView_LandingLoginUpdate(user);
             base.OnNavigatedTo(e);
         }
+
+        
 
         private void NaviView_LandingLoginUpdate(CognitoUser userF)
         {
@@ -52,26 +66,33 @@ namespace College_Organizer
 
         private async void AddNewCourse()
         {
-            CourseName course = new CourseName();
-            var result  = await course.ShowAsync();
+            CourseName courseDialog = new CourseName();
+            var result  = await courseDialog.ShowAsync();
             if (result == ContentDialogResult.Primary)
             {
-                RichEditBox richEdit = new RichEditBox();
-                
-                var item = AddNaviItem();
+
+                var item = AddNaviItem("Add New Course");
                 landingNaviView.MenuItems.Add(item);
                 landingNaviView.MenuItems.Add(new NavigationViewItemSeparator());
-                landingNaviView.MenuItems.Add(new NavigationViewItemHeader().Content = "Assignments");
-                landingNaviView.MenuItems.Add(new NavigationViewItem().Content = "Add New Assignment");
-                landingNaviView.MenuItems.Add(new NavigationViewItemSeparator());
-                landingNaviView.MenuItems.Add(new NavigationViewItemHeader().Content = "Tests");
-                landingNaviView.MenuItems.Add(new NavigationViewItem().Content = "Add New Test");
-                landingNaviView.MenuItems.Add(new NavigationViewItemSeparator());
-                landingNaviView.MenuItems.Add(new NavigationViewItemHeader().Content = "Projects");
-                landingNaviView.MenuItems.Add(new NavigationViewItem().Content = "Add New Project");
+                landingNaviView.MenuItems.Add(new NavigationViewItemHeader().Content = "Notes");
+                landingNaviView.MenuItems.Add(new NavigationViewItem() { Content = "Add New Note", Tag = "Note"});
+ 
+                landingNaviView.SelectedItem = item;
+            }
+        }
+
+        private async void AddNewNote()
+        {
+            CourseName courseDialog = new CourseName();
+            courseDialog.Title = "New Note";
+            var result = await courseDialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                var item = AddNaviItem(courseDialog.Title.ToString());
+                landingNaviView.MenuItems.Add(item);
 
                 landingNaviView.SelectedItem = item;
-                landingGrid.Children.Add(richEdit);
+                lContentFrame.Navigate(typeof(Landing_Views.Assignments));
             }
         }
 
@@ -80,10 +101,17 @@ namespace College_Organizer
             
         }
         // Reminder: Make some changes later to make more generic
-        private NavigationViewItem AddNaviItem()
+        private NavigationViewItem AddNaviItem(string title)
         {
             NavigationViewItem viewItem = new NavigationViewItem();
-            viewItem.Content = ApplicationData.Current.LocalSettings.Values["CourseName"];
+            if (title == "Add New Course")
+            {
+                viewItem.Content = ApplicationData.Current.LocalSettings.Values["CourseName"];
+            }
+            else
+            {
+                viewItem.Content = ApplicationData.Current.LocalSettings.Values["NoteName"];
+            }
             return viewItem;
         }
 
@@ -100,6 +128,10 @@ namespace College_Organizer
             if (pageTypeName == firstItem.Tag.ToString())
             {
                 AddNewCourse();
+            }
+            else if (pageTypeName == "Note")
+            {
+                AddNewNote();
             }
         }
     }
