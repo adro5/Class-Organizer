@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 
 namespace College_Organizer
 {
-    [JsonObject(MemberSerialization.Fields)]
     public class Course
     {
         public string courseName { get; set; }
@@ -15,5 +13,22 @@ namespace College_Organizer
         public string noteName { get; set; }
 
         public string notes { get; set; }
+
+        public static bool operator== (Course courseA, Course courseB)
+        {
+            if ((courseA.courseName == courseB.courseName) && (courseA.noteName == courseB.noteName) && (courseA.notes == courseB.notes))
+            {
+                return true;
+            }
+            else
+            {
+                return false;  
+            }
+        }
+
+        public static bool operator!= (Course courseA, Course courseB)
+        {
+            return !(courseA == courseB);
+        }
     }
 }

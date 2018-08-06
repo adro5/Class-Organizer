@@ -16,6 +16,8 @@ using Windows.Storage;
 using Newtonsoft.Json;
 using Windows.System.Threading;
 using System.Threading.Tasks;
+using System.Text;
+using System.Collections;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -27,6 +29,7 @@ namespace College_Organizer.Landing_Views
     public sealed partial class Assignments : Page
     {
         string JSON = "";
+        Stream stream;
 
         public Assignments()
         {
@@ -44,12 +47,17 @@ namespace College_Organizer.Landing_Views
 
             JSON += JsonConvert.SerializeObject(course);
 
-            await JSONFile();
+            await JSONFile(course);
 
         }
 
-        private async Task JSONFile()
+        private async Task JSONFile(Course course)
         {
+            StringBuilder builder = new StringBuilder();
+            string nextLine;
+            ArrayList JSONList = new ArrayList();
+            List<Course> listCourses = new List<Course>();
+
             if (ApplicationData.Current.LocalFolder.TryGetItemAsync("Student.json") == null)
             {
                 var file2 = await ApplicationData.Current.LocalFolder.CreateFileAsync("Student.json");
@@ -58,7 +66,25 @@ namespace College_Organizer.Landing_Views
             else
             {
                 var file2 = await ApplicationData.Current.LocalFolder.GetFileAsync("Student.json");
-                await FileIO.WriteTextAsync(file2, JSON);
+                using (StreamReader reader = new StreamReader(await file2.OpenStreamForReadAsync()))
+                {
+                    while ((nextLine = await reader.ReadLineAsync()) != null)
+                    {
+                        JSONList.Add(nextLine);
+                    }
+                    foreach (string serialized in JSONList)
+                    {
+                        listCourses.Add((Course)JsonConvert.DeserializeObject(serialized));
+                    }
+                    foreach (Course courseCheck in listCourses)
+                    {
+                        
+                    }
+
+                    
+                }
+                stream = await file2.OpenStreamForWriteAsync();
+                await FileIO.AppendTextAsync(file2, JSON);
             }
         }
     }
