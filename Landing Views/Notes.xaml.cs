@@ -29,23 +29,21 @@ namespace College_Organizer.Landing_Views
     public sealed partial class Assignments : Page
     {
         string JSON = "";
-        Stream stream;
+        List<Course> listCourses;
+        Course course;
 
         public Assignments()
         {
             this.InitializeComponent();
         }
-
         private async void Button_Click(object sender, RoutedEventArgs e)
         {
             string notes;
-            Course course = new Course();
+            course = new Course();
             course.courseName = ApplicationData.Current.LocalSettings.Values["CourseName"].ToString();
             course.noteName = ApplicationData.Current.LocalSettings.Values["NoteName"].ToString();
             rText.Document.GetText(Windows.UI.Text.TextGetOptions.None, out notes);
             course.notes = notes;
-
-            JSON += JsonConvert.SerializeObject(course);
 
             await JSONFile(course);
 
@@ -53,38 +51,71 @@ namespace College_Organizer.Landing_Views
 
         private async Task JSONFile(Course course)
         {
-            StringBuilder builder = new StringBuilder();
-            string nextLine;
+            string next;
             ArrayList JSONList = new ArrayList();
-            List<Course> listCourses = new List<Course>();
+            StorageFile file2;
+            bool check = false;
 
-            if (ApplicationData.Current.LocalFolder.TryGetItemAsync("Student.json") == null)
+            if (await ApplicationData.Current.LocalFolder.TryGetItemAsync("Student.json") == null)
             {
-                var file2 = await ApplicationData.Current.LocalFolder.CreateFileAsync("Student.json");
+                listCourses = new List<Course>();
+                file2 = await ApplicationData.Current.LocalFolder.CreateFileAsync("Student.json");
+                listCourses.Add(course);
+                JSON = JsonConvert.SerializeObject(listCourses);
                 await FileIO.WriteTextAsync(file2, JSON);
             }
             else
             {
-                var file2 = await ApplicationData.Current.LocalFolder.GetFileAsync("Student.json");
+                file2 = await ApplicationData.Current.LocalFolder.GetFileAsync("Student.json");
                 using (StreamReader reader = new StreamReader(await file2.OpenStreamForReadAsync()))
                 {
-                    while ((nextLine = await reader.ReadLineAsync()) != null)
-                    {
-                        JSONList.Add(nextLine);
-                    }
-                    foreach (string serialized in JSONList)
-                    {
-                        listCourses.Add((Course)JsonConvert.DeserializeObject(serialized));
-                    }
-                    foreach (Course courseCheck in listCourses)
-                    {
-                        
-                    }
-
-                    
+                    next = await reader.ReadToEndAsync();
                 }
-                stream = await file2.OpenStreamForWriteAsync();
-                await FileIO.AppendTextAsync(file2, JSON);
+
+                listCourses = JsonConvert.DeserializeObject<List<Course>>(next);
+                foreach (Course coursecheck in listCourses)
+                {
+                    if ((coursecheck.courseName == course.courseName) && (coursecheck.noteName == course.noteName) && (coursecheck.notes == course.notes))
+                    {
+                        check = true;
+                        break;
+                    }
+                }
+                if (check == false)
+                {
+                    listCourses.Add(course);
+                }
+                    
+                JSON = JsonConvert.SerializeObject(listCourses);
+                await FileIO.WriteTextAsync(file2, JSON);
+            }
+            
+        }
+
+        private async void btUpdate_Click(object sender, RoutedEventArgs e)
+        {
+            StorageFile file2 = await ApplicationData.Current.LocalFolder.GetFileAsync("Student.json");
+            string notes;
+            rText.Document.GetText(Windows.UI.Text.TextGetOptions.None, out notes);
+            course.notes = notes;
+            foreach (Course courseCheck in listCourses.ToList())
+            {
+                if ((courseCheck.courseName == course.courseName) && ((courseCheck.noteName == course.noteName) && (courseCheck.notes != course.notes)))
+                {
+                    courseCheck.notes = course.notes;
+                }
+            }
+
+            JSON = JsonConvert.SerializeObject(listCourses);
+            await FileIO.WriteTextAsync(file2, JSON);
+        }
+
+        private async void Page_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (await ApplicationData.Current.LocalFolder.TryGetItemAsync("Student.json") != null)
+            {
+                var storageFile = await ApplicationData.Current.LocalFolder.GetFileAsync("Student.json");
+
             }
         }
     }
