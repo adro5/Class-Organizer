@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Amazon.DynamoDBv2;
 
 namespace College_Organizer
 {
@@ -14,6 +15,7 @@ namespace College_Organizer
 
         public string notes { get; set; }
 
+        // For future use
         public static bool operator== (Course courseA, Course courseB)
         {
             if ((courseA.courseName == courseB.courseName) && (courseA.noteName == courseB.noteName) && (courseA.notes == courseB.notes))
@@ -22,13 +24,28 @@ namespace College_Organizer
             }
             else
             {
-                return false;  
+                return false;
             }
         }
 
         public static bool operator!= (Course courseA, Course courseB)
         {
-            return !(courseA == courseB);
+            if ((courseA.courseName != courseB.courseName) && (courseA.noteName != courseB.noteName) && (courseA.notes != courseB.notes))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            
+        }
+
+        public void Remove()
+        {
+            courseName = null;
+            noteName = null;
+            notes = null;
         }
     }
 }

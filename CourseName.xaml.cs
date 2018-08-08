@@ -27,7 +27,14 @@ namespace College_Organizer
 
         private void ContentDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
-            ApplicationData.Current.LocalSettings.Values["CourseName"] = txtCourseAdd.Text;
+            if (this.Title.ToString() == "New Note")
+            {
+                ApplicationData.Current.LocalSettings.Values["NoteName"] = txtCourseAdd.Text;
+            }
+            else
+            {
+                ApplicationData.Current.LocalSettings.Values["CourseName"] = txtCourseAdd.Text;
+            }
         }
 
         private void ContentDialog_SecondaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)

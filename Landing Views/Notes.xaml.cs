@@ -18,6 +18,11 @@ using Windows.System.Threading;
 using System.Threading.Tasks;
 using System.Text;
 using System.Collections;
+using Amazon.CognitoIdentity;
+using Amazon.CognitoIdentityProvider;
+using Amazon.CognitoIdentityProvider.Model;
+using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.Model;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -31,28 +36,38 @@ namespace College_Organizer.Landing_Views
         string JSON = "";
         List<Course> listCourses;
         Course course;
+        private readonly string identityID = ApplicationData.Current.LocalSettings.Values["IDENTITYPOOL_ID"].ToString();
+        private CognitoAWSCredentials cognitoCred;
 
         public Assignments()
         {
             this.InitializeComponent();
         }
+
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            base.OnNavigatedTo(e);
+            cognitoCred = e.Parameter as CognitoAWSCredentials;
+        }
+
         private async void Button_Click(object sender, RoutedEventArgs e)
         {
-            string notes;
-            course = new Course();
-            course.courseName = ApplicationData.Current.LocalSettings.Values["CourseName"].ToString();
-            course.noteName = ApplicationData.Current.LocalSettings.Values["NoteName"].ToString();
-            rText.Document.GetText(Windows.UI.Text.TextGetOptions.None, out notes);
+            course = new Course()
+            {
+                courseName = ApplicationData.Current.LocalSettings.Values["CourseName"].ToString(),
+                noteName = ApplicationData.Current.LocalSettings.Values["NoteName"].ToString()
+            };
+            rText.Document.GetText(Windows.UI.Text.TextGetOptions.None, out string notes);
             course.notes = notes;
 
             await JSONFile(course);
-
+            await UpdateAmazonDB();
+            
         }
 
         private async Task JSONFile(Course course)
         {
             string next;
-            ArrayList JSONList = new ArrayList();
             StorageFile file2;
             bool check = false;
 
@@ -88,15 +103,31 @@ namespace College_Organizer.Landing_Views
                     
                 JSON = JsonConvert.SerializeObject(listCourses);
                 await FileIO.WriteTextAsync(file2, JSON);
+
             }
             
+        }
+        private async Task UpdateAmazonDB()
+        {
+            var dbClient = new AmazonDynamoDBClient(cognitoCred, Amazon.RegionEndpoint.USEast1);
+            var addRequest = new PutItemRequest()
+            {
+                TableName = "Notes",
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    {"courseName", new AttributeValue { S = course.courseName}},
+                    {"noteName", new AttributeValue {S = course.noteName} },
+                    {"notes", new AttributeValue {S = course.notes} }
+                }
+            };
+
+            await dbClient.PutItemAsync(addRequest);
         }
 
         private async void btUpdate_Click(object sender, RoutedEventArgs e)
         {
             StorageFile file2 = await ApplicationData.Current.LocalFolder.GetFileAsync("Student.json");
-            string notes;
-            rText.Document.GetText(Windows.UI.Text.TextGetOptions.None, out notes);
+            rText.Document.GetText(Windows.UI.Text.TextGetOptions.None, out string notes);
             course.notes = notes;
             foreach (Course courseCheck in listCourses.ToList())
             {
@@ -108,6 +139,7 @@ namespace College_Organizer.Landing_Views
 
             JSON = JsonConvert.SerializeObject(listCourses);
             await FileIO.WriteTextAsync(file2, JSON);
+            await UpdateAmazonDB();
         }
 
         private async void Page_Loaded(object sender, RoutedEventArgs e)
@@ -117,6 +149,11 @@ namespace College_Organizer.Landing_Views
                 var storageFile = await ApplicationData.Current.LocalFolder.GetFileAsync("Student.json");
 
             }
+        }
+
+        public void Remove()
+        {
+
         }
     }
 }

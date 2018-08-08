@@ -47,10 +47,18 @@ namespace College_Organizer.Views
 
         private async void btnLogin_Click(object sender, RoutedEventArgs e)
         {
-            bool loggedIn = await CheckPasswordAsync(txtLogin.Text, pWLogin.Password);
-            if (loggedIn)
+            try
             {
-                CreateNewView();                
+                bool loggedIn = await CheckPasswordAsync(txtLogin.Text, pWLogin.Password);
+                if (loggedIn)
+                {
+                    CreateNewView();
+                }
+            }
+            catch (Exception ex)
+            {
+                var msgBox = new MessageDialog("Wrong Username/Password", "Log In Error");
+                await msgBox.ShowAsync();
             }
         }
 

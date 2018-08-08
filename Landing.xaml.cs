@@ -18,6 +18,9 @@ using Amazon.CognitoIdentity;
 using Windows.Storage;
 using Newtonsoft.Json;
 using Windows.ApplicationModel;
+using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.DocumentModel;
+using Amazon.DynamoDBv2.Model;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -30,15 +33,14 @@ namespace College_Organizer
     {
         private readonly string identityID = ApplicationData.Current.LocalSettings.Values["IDENTITYPOOL_ID"].ToString();
         private event SuspendingEventHandler Suspending;
-        int countEdits = -1, countAssi = -1;
-
+        CognitoAWSCredentials credentials;
         public Landing()
         {
             this.InitializeComponent();
             this.Suspending += OnSuspending; 
         }
 
-        private async void OnSuspending(object sender, SuspendingEventArgs e)
+        private void OnSuspending(object sender, SuspendingEventArgs e)
         {
             
             
@@ -46,16 +48,16 @@ namespace College_Organizer
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
+            base.OnNavigatedTo(e);
             var user = e.Parameter as CognitoUser;
             NaviView_LandingLoginUpdate(user);
-            base.OnNavigatedTo(e);
         }
 
         
 
         private void NaviView_LandingLoginUpdate(CognitoUser userF)
         {
-            CognitoAWSCredentials credentials = userF.GetCognitoAWSCredentials(identityID, RegionEndpoint.USEast1);
+            credentials = userF.GetCognitoAWSCredentials(identityID, RegionEndpoint.USEast1);
 
         }
 
@@ -83,16 +85,19 @@ namespace College_Organizer
 
         private async void AddNewNote()
         {
-            CourseName courseDialog = new CourseName();
-            courseDialog.Title = "New Note";
+            CourseName courseDialog = new CourseName()
+            {
+                Title = "New Note"
+            };
             var result = await courseDialog.ShowAsync();
             if (result == ContentDialogResult.Primary)
             {
                 var item = AddNaviItem(courseDialog.Title.ToString());
+                item.Tag = "NoteItem";
                 landingNaviView.MenuItems.Add(item);
 
                 landingNaviView.SelectedItem = item;
-                lContentFrame.Navigate(typeof(Landing_Views.Assignments));
+                lContentFrame.Navigate(typeof(Landing_Views.Assignments), credentials);
             }
         }
 
@@ -100,7 +105,7 @@ namespace College_Organizer
         {
             
         }
-        // Reminder: Make some changes later to make more generic
+
         private NavigationViewItem AddNaviItem(string title)
         {
             NavigationViewItem viewItem = new NavigationViewItem();
@@ -133,6 +138,109 @@ namespace College_Organizer
             {
                 AddNewNote();
             }
+            else if (pageTypeName == "NoteItem")
+            {
+                ApplicationData.Current.LocalSettings.Values["NoteName"] = invokedMenuItem.Content;
+                lContentFrame.Navigate(typeof(Landing_Views.Assignments), credentials);
+            }
+        }
+
+        private void MenuFlyoutItem_Click(object sender, RoutedEventArgs e)
+        {
+            
+            
+        }
+
+        private async void landingNaviView_RightTapped(object sender, RightTappedRoutedEventArgs e)
+        {
+            StorageFile file = await ApplicationData.Current.LocalFolder.GetFileAsync("Student.json");
+            string text;
+            List<int> elements = new List<int>();
+            using (StreamReader stream = new StreamReader(await file.OpenStreamForReadAsync()))
+            {
+                text = await stream.ReadToEndAsync();
+            }
+
+            List<Course> courses = JsonConvert.DeserializeObject<List<Course>>(text);
+
+            NavigationView source = sender as NavigationView;
+            var selectedItem = source.SelectedItem as NavigationViewItem;
+
+            var dbClient = new AmazonDynamoDBClient(credentials, Amazon.RegionEndpoint.USEast1);
+            var table = Table.LoadTable(dbClient, "Notes");
+
+            DeleteItemResponse deleteItemResponse;
+            
+
+            foreach (Course forRemove in courses.ToList())
+            {
+                if (selectedItem.Content.ToString() == forRemove.courseName)
+                {
+                    var itemToDelete = new DeleteItemRequest()
+                    {
+                        //Update Primary Key & Make Batch Op
+                        TableName = "Notes",
+                        Key = new Dictionary<string, AttributeValue>() { {forRemove.courseName, new AttributeValue { S = forRemove.noteName} }}
+                    };
+                    
+                    deleteItemResponse = await dbClient.DeleteItemAsync(itemToDelete);
+                    forRemove.Remove();
+
+                    foreach (NavigationViewItemBase item in landingNaviView.MenuItems.ToList())
+                    {
+                        if (item.Content == selectedItem.Content)
+                        {
+                            landingNaviView.MenuItems.Remove(item);
+                        }
+                    }
+                }
+                else if (selectedItem.Content.ToString() == forRemove.noteName)
+                {
+                    var itemToDelete = new DeleteItemRequest()
+                    {
+                        TableName = "Notes",
+                        Key = new Dictionary<string, AttributeValue>()
+                        {
+                            {"courseName" ,new AttributeValue { S = forRemove.courseName } },
+                            {"noteName" ,new AttributeValue { S = forRemove.noteName } }
+                        }
+                    };
+                    deleteItemResponse = await dbClient.DeleteItemAsync(itemToDelete);
+                    forRemove.Remove();
+
+                    foreach (var item in landingNaviView.MenuItems)
+                    {
+                        if (item != null && item is string)
+                        {
+                            continue;
+                        }
+                        if (item is NavigationViewItem && ((NavigationViewItem)item).Content.ToString() == selectedItem.Content.ToString())
+                        {
+                            landingNaviView.MenuItems.Remove(item);
+                            landingNaviView.SelectedItem = landingNaviView.MenuItems.FirstOrDefault();
+                            break;
+                        }
+                    }
+                }
+            }
+            // Checks for null courses and adds the indices to a list
+            for (int i = 0; i <= courses.Count - 1; i++)
+            {
+                if (courses.ElementAt(i).courseName == null)
+                {
+                    System.Diagnostics.Debug.WriteLine(i);
+                    elements.Add(i);
+                }
+            }
+            // Deletes
+            foreach (int i in elements)
+            {
+                System.Diagnostics.Debug.WriteLine(i + "Delete");
+                courses.RemoveAt(i);
+            }
+
+            text = JsonConvert.SerializeObject(courses);
+            await FileIO.WriteTextAsync(file, text);
         }
     }
 }
