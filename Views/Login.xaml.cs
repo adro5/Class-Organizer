@@ -42,7 +42,6 @@ namespace College_Organizer.Views
         {
             this.InitializeComponent();
             _client = new AmazonCognitoIdentityProviderClient(new AnonymousAWSCredentials(), RegionEndpoint.USEast1);
-            
         }
 
         private async void btnLogin_Click(object sender, RoutedEventArgs e)

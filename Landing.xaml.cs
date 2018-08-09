@@ -21,6 +21,8 @@ using Windows.ApplicationModel;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DocumentModel;
 using Amazon.DynamoDBv2.Model;
+using Windows.ApplicationModel.Core;
+using Windows.UI.ViewManagement;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -33,11 +35,32 @@ namespace College_Organizer
     {
         private readonly string identityID = ApplicationData.Current.LocalSettings.Values["IDENTITYPOOL_ID"].ToString();
         private event SuspendingEventHandler Suspending;
+        private int currentID = ApplicationView.GetForCurrentView().Id;
         CognitoAWSCredentials credentials;
+        CognitoUser userF;
         public Landing()
         {
             this.InitializeComponent();
-            this.Suspending += OnSuspending; 
+            this.Suspending += OnSuspending;
+            signOut.Tapped += tappedEventHandler;
+        }
+
+        private async void tappedEventHandler(object sender, TappedRoutedEventArgs e)
+        {
+            await userF.GlobalSignOutAsync();
+            
+            CoreApplicationView loginPage = CoreApplication.CreateNewView();
+            int newViewId = 0;
+            await loginPage.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                Frame frame = new Frame();
+                frame.Navigate(typeof(MainPage));
+                Window.Current.Content = frame;
+                Window.Current.Activate();
+
+                newViewId = ApplicationView.GetForCurrentView().Id;
+            });
+            await ApplicationViewSwitcher.SwitchAsync(newViewId, currentID, ApplicationViewSwitchingOptions.ConsolidateViews);
         }
 
         private void OnSuspending(object sender, SuspendingEventArgs e)
@@ -50,15 +73,16 @@ namespace College_Organizer
         {
             base.OnNavigatedTo(e);
             var user = e.Parameter as CognitoUser;
-            NaviView_LandingLoginUpdate(user);
+            userF = user;
+            NaviView_LandingLoginUpdate();
         }
 
         
 
-        private void NaviView_LandingLoginUpdate(CognitoUser userF)
+        private void NaviView_LandingLoginUpdate()
         {
             credentials = userF.GetCognitoAWSCredentials(identityID, RegionEndpoint.USEast1);
-
+            
         }
 
         private void landingNaviView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
